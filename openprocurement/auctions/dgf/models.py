@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime, timedelta, time
-from schematics.types import StringType, URLType, IntType
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from schematics.types import StringType, URLType, IntType, DecimalType as BaseDecimalType
 from schematics.types.compound import ModelType
-from schematics.exceptions import ValidationError
+from schematics.exceptions import ValidationError, ConversionError
 from schematics.transforms import blacklist, whitelist
 from schematics.types.serializable import serializable
 from urlparse import urlparse, parse_qs
@@ -43,6 +44,25 @@ ORA_CODES[0:0] = ["UA-IPN", "UA-FIN"]
 DGF_ID_REQUIRED_FROM = datetime(2017, 1, 1, tzinfo=TZ)
 
 
+class DecimalType(BaseDecimalType):
+
+    def __init__(self, precision=-3, min_value=None, max_value=None, **kwargs):
+        self.min_value, self.max_value = min_value, max_value
+        self.precision = Decimal("1E{:d}".format(precision))
+        super(DecimalType, self).__init__(**kwargs)
+
+    def to_native(self, value, context=None):
+        if not isinstance(value, Decimal):
+            if not isinstance(value, basestring):
+                value = unicode(value)
+            try:
+                value = Decimal(value).quantize(self.precision, rounding=ROUND_HALF_UP).normalize()
+            except (TypeError, InvalidOperation):
+                raise ConversionError(self.messages['number_coerce'].format(value))
+
+        return value
+
+
 class Item(BaseItem):
     """A good, service, or work to be contracted."""
     class Options:
@@ -53,6 +73,7 @@ class Item(BaseItem):
     additionalClassifications = ListType(ModelType(Classification), default=list())
     address = ModelType(Address)
     location = ModelType(Location)
+    quantity = DecimalType()  # The number of units required
 
 
 class Identifier(BaseIdentifier):

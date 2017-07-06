@@ -571,6 +571,17 @@ class AuctionResourceTest(BaseWebTest):
             {u'description': {u'contactPoint': {u'email': [u'telephone or email should be present']}}, u'location': u'body', u'name': u'procuringEntity'}
         ])
 
+        data = self.initial_data["items"][0]["quantity"]
+        self.initial_data["items"][0]["quantity"] = '0,5'
+        response = self.app.post_json(request_path, {'data': self.initial_data}, status=422)
+        self.initial_data["items"][0]["quantity"] = data
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': {u'quantity': [u"Number '0,5' failed to convert to a decimal."]}, u'location': u'body', u'name': u'items'}
+        ])
+
     @unittest.skipIf(get_now() < DGF_ID_REQUIRED_FROM, "Can`t create auction without dgfID only from {}".format(DGF_ID_REQUIRED_FROM))
     def test_required_dgf_id(self):
         data = self.initial_data.copy()
