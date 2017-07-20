@@ -1,4 +1,9 @@
 # -*- coding: utf-8 -*-
+import json
+import decimal
+import simplejson
+import couchdb.json
+from couchdb import util
 from logging import getLogger
 from pkg_resources import get_distribution
 from openprocurement.api.models import get_now, TZ
@@ -13,6 +18,16 @@ from openprocurement.auctions.core.utils import (
 
 PKG = get_distribution(__package__)
 LOGGER = getLogger(PKG.project_name)
+
+
+my_encode = lambda obj, dumps=simplejson.dumps: dumps(obj, allow_nan=False, ensure_ascii=False)
+
+def my_decode(string_):
+    if isinstance(string_, util.btype):
+        string_ = string_.decode("utf-8")
+    return json.loads(string_, parse_float=decimal.Decimal)
+
+couchdb.json.use(decode=my_decode, encode=my_encode)
 
 
 def upload_file(request, blacklisted_fields=DOCUMENT_BLACKLISTED_FIELDS):
